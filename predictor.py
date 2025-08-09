@@ -56,3 +56,4 @@ for ticker in tickers:
 # Convert results to DataFrame for easy view/export
 results_df = pd.DataFrame(results)
 print(results_df)
+
