@@ -37,20 +37,23 @@ def detect_crossover(short_ma, long_ma):
 def apply_strategy(df, ticker):
     df = add_indicators(df)
 
-    # Buy when RSI < 30 and 20DMA crosses above 50DMA
-    df["Buy_Signal"] = (df["RSI"] < 30) & detect_crossover(df["20DMA"], df["50DMA"])
+    # Buy when RSI < 50 and 20DMA > 50DMA (trend up)
+    df["Buy_Signal"] = (df["RSI"] < 50) & (df["20DMA"] > df["50DMA"])
 
-    # Sell when RSI > 70 and 50DMA crosses above 20DMA
-    df["Sell_Signal"] = (df["RSI"] > 70) & detect_crossover(df["50DMA"], df["20DMA"])
+    # Sell when RSI > 55 and 20DMA < 50DMA (trend down)
+    df["Sell_Signal"] = (df["RSI"] > 55) & (df["20DMA"] < df["50DMA"])
 
     # Track Position
     df["Position"] = 0
     position = 0
     for i in range(1, len(df)):
-        if df["Buy_Signal"].iloc[i] and position == 0:
+        if df["Buy_Signal"].iloc[i]:
             position = 1
-        elif df["Sell_Signal"].iloc[i] and position == 1:
+            buy_price = df["Close"].iloc[i]
+            df.at[df.index[i], "Buy_Price"] = buy_price
+        elif df["Sell_Signal"].iloc[i]:
             position = 0
+            df.at[df.index[i], "Sell_Price"] = df["Close"].iloc[i]
         df.at[df.index[i], "Position"] = position
 
     # Returns
@@ -64,7 +67,6 @@ def apply_strategy(df, ticker):
     # Reset index for final DataFrame
     df.reset_index(inplace=True)
     return df
-
 # ========================
 # 4. Backtesting Function
 # ========================
