@@ -25,6 +25,8 @@ def update_google_sheet(sheet_name, df_dict, creds_path):
             pass
 
         worksheet = sheet.add_worksheet(title=tab_name, rows=str(len(df)+1), cols=str(len(df.columns)))
+        df = df.copy()
+        df = df.astype(str) 
         worksheet.update([df.columns.values.tolist()] + df.values.tolist())
 
     print(f"Google Sheet '{sheet_name}' updated.")

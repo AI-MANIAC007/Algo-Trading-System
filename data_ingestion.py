@@ -22,9 +22,3 @@ def fetch_data(tickers, days=180):
 
 def save_to_csv(df, filepath="data/stock_data.csv"):
     df.to_csv(filepath, index=False)
-
-if __name__ == "__main__":
-    tickers = ["ADANIPOWER.NS", "NATCOPHARM.NS", "TATATECH.NS"] 
-    df = fetch_data(tickers)
-    save_to_csv(df)
-    print("Stock data is successfully stored.")

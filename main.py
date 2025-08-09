@@ -1,8 +1,8 @@
 import logging
 from data_ingestion import fetch_data, save_to_csv
 from trading_strategy import backtest_all
-from predictor import train_model
-from google_sheet.data_logger import update_sheet
+from predictor import train_and_evaluate_model
+from google_sheet.data_logger import update_google_sheet
 from telegram_alerts import send_telegram
 import pandas as pd
 import os
@@ -37,20 +37,24 @@ def run_pipeline():
 
     # 2) Strategy backtest
     logger.info("Running backtest...")
-    backtest_df, trades_df = backtest_all(csv_path=CSV_PATH)
+    backtest_df= backtest_all(csv_file_path=CSV_PATH)
     backtest_df.to_csv(BACKTEST_OUTPUT, index=False)
-    trades_df.to_csv(TRADES_OUTPUT, index=False)
-    logger.info("Backtest saved to %s and %s", BACKTEST_OUTPUT, TRADES_OUTPUT)
+    logger.info("Backtest saved to %s", BACKTEST_OUTPUT)
 
     # 3) ML model (per ticker) - demonstrate for each ticker, store results
     ml_summary = []
-    for ticker in df["Ticker"].unique():
+    tickers = [col.replace("Close_", "") for col in df.columns if col.startswith("Close_")]
+
+    for ticker in tickers:
         logger.info("Training ML for %s", ticker)
-        df_t = df[df["Ticker"] == ticker]
+        df_t = pd.DataFrame({
+            "Close": df[f"Close_{ticker}"],
+            "Volume": df[f"Volume_{ticker}"]
+        })
         try:
-            res = train_model(df_t, model_type="tree", save_path=None)
-            ml_summary.append({"Ticker": ticker, "Accuracy": res["accuracy"]})
-            logger.info("Ticker %s ML accuracy: %.3f", ticker, res["accuracy"])
+            acc, cm = train_and_evaluate_model(df_t)
+            ml_summary.append({"Ticker": ticker, "Accuracy": acc})
+            logger.info("Ticker %s ML accuracy: %.3f", ticker, acc)
         except Exception as e:
             logger.exception("ML training failed for %s: %s", ticker, e)
 
@@ -75,7 +79,7 @@ def run_pipeline():
             "Win_Ratio": win_df,
             "ML_Summary": ml_summary_df
         }
-        update_sheet(SPREADSHEET_NAME, df_dict, GS_CREDS_PATH)
+        update_google_sheet(SPREADSHEET_NAME, df_dict, GS_CREDS_PATH)
 
     # 5) Telegram alerts (optional) — send a daily summary
     if ENABLE_TELEGRAM:
